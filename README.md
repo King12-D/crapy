@@ -1,12 +1,12 @@
 # Crapy - Flink Agriculture Scraper
 
-A robust web scraper designed for **Flink** to extract agriculture and food product data from Jiji.ng.
+A robust web scraper designed for **Flink** to extract agriculture products and seller contacts from Jiji.ng and sync them to the Flink mobile app.
 
 ## Features
-- **Headless Firefox**: Runs in the background using Selenium and Geckodriver.
-- **Agriculture Focus**: Specifically configured to scrape the `Agriculture & Foodstuff` category.
-- **Data Export**: Saves results to `data/crapy_results.csv`.
-- **Structured Data**: Extracts Product Name, Price, Location, and Seller Name.
+- **Phone Extraction**: Automatically clicks protected "Show contact" buttons to reveal seller phone numbers.
+- **Agriculture Focus**: Optimized for the `Agriculture & Foodstuff` category.
+- **Clean Data**: Exports only relevant fields to CSV (no URLs).
+- **Flink Sync**: Includes an uploader script to push data to the Flink API.
 
 ## Prerequisites
 - Python 3.12+
@@ -15,26 +15,31 @@ A robust web scraper designed for **Flink** to extract agriculture and food prod
 
 ## Installation
 1. Clone the repository.
-2. Create and activate a venv:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
-3. Install dependencies:
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
 ## Usage
-Run the main script:
+
+### 1. Scrape Data
+Run the main script to fetch products and phone numbers:
 ```bash
 python main.py
 ```
+*The data will be saved to `data/crapy_results.csv`.*
+
+### 2. Sync to Flink
+To upload the scraped results to your Flink marketplace backend:
+```bash
+python src/sync_to_flink.py
+```
+*You will need a valid Flink Bearer Token.*
 
 ## Data Output
-The scraper generates a CSV file in the `data/` folder with the following columns:
+The CSV contains:
 - `product_name`
 - `price`
 - `location`
 - `seller_name`
-- `product_url`
+- `seller_phone`
