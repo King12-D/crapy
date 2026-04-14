@@ -1,0 +1,4 @@
+autoscraper
+selenium
+webdriver-manager
+pandas
