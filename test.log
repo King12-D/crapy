@@ -1,0 +1,31 @@
+--- Starting Phone-Hunter Scraper for Flink: https://jiji.ng/agriculture-and-foodstuff ---
+--- Navigating to Listing: https://jiji.ng/agriculture-and-foodstuff ---
+--- Found 48 items ---
+--- Processing 15 items for Seller Info (Phones) ---
+--- Phone Scraping 1/15: Agriguard-Ga... ---
+--- Phone Scraping 2/15: Yam in Bulk Big, Medium a... ---
+--- Phone Scraping 3/15: Salt Mineral Lick... ---
+--- Phone Scraping 4/15: Ivermectin 4% 100ml... ---
+--- Phone Scraping 5/15: 18hp Hand-Walking Tractor... ---
+--- Phone Scraping 6/15: 7.5hp Power Tiller Tracto... ---
+--- Phone Scraping 7/15: Poly Twine Rope for Stack... ---
+--- Phone Scraping 8/15: Gold Kili Instant 3 in 1 ... ---
+--- Phone Scraping 9/15: 1 Kg of Beetroot Powder... ---
+--- Phone Scraping 10/15: 100pcs Fumicatiion Tablet... ---
+--- Phone Scraping 11/15: Laraforce Gold Insecticid... ---
+--- Phone Scraping 12/15: Tigernut Milk Extractor a... ---
+--- Phone Scraping 13/15: Mega Rhino 500ml by 12btl... ---
+--- Phone Scraping 14/15: Imported Layer Cages For ... ---
+--- Phone Scraping 15/15: H Type Design Battery Cag... ---
+
+--- Success! Data saved (without URLs). ---
+                        product_name  ... seller_phone
+0                       Agriguard-Ga  ...  29448138408
+1  Yam in Bulk Big, Medium and Small  ...  29448138408
+2                  Salt Mineral Lick  ...  29448138408
+3                Ivermectin 4% 100ml  ...  29448138408
+4         18hp Hand-Walking Tractors  ...  29448138408
+
+[5 rows x 5 columns]
+
+--- File location: data/crapy_results.csv ---

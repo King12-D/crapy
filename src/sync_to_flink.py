@@ -1,27 +1,22 @@
+import pandas as pd
 import requests
 import json
 import os
-import csv
-from urllib.parse import urlparse
+import ast
 
 # Flink API Configuration
-# Default points to your deployed server routes (/api/v1/*).
-# Override with env var if needed, e.g.:
-#   export FLINK_API_BASE_URL="http://localhost:3000/api/v1"
-API_BASE_URL = os.getenv("FLINK_API_BASE_URL", "https://srv.getflink.pro/api/v1")
+API_BASE_URL = 'https://srv.getflink.pro/api/v1' 
 SYNC_ENDPOINT = f"{API_BASE_URL}/product/new"
 
 def clean_price(price_str):
     try:
-        # Remove currency symbol and commas: ₦ 30,000 -> 30000
-        clean = price_str.replace('₦', '').replace(',', '').strip()
+        clean = str(price_str).replace('₦', '').replace(',', '').strip()
         return float(clean)
     except:
         return 0.0
 
 def parse_location(loc_str):
-    # Jiji format: "Lagos, Ojo"
-    parts = loc_str.split(',')
+    parts = str(loc_str).split(',')
     state = parts[0].strip() if len(parts) > 0 else "Unknown"
     city = parts[1].strip() if len(parts) > 1 else state
     return {
@@ -30,110 +25,56 @@ def parse_location(loc_str):
         "address": loc_str
     }
 
-def category_from_link(link: str) -> str:
+def parse_images(img_val):
+    if pd.isna(img_val):
+        return []
     try:
-        path = urlparse(str(link)).path.strip("/")
-        parts = [p for p in path.split("/") if p]
-        return parts[1].strip().lower() if len(parts) >= 2 else "agriculture-and-foodstuff"
+        #all_images in CSV is saved as a string "[url1, url2]"
+        return ast.literal_eval(str(img_val))
     except:
-        return "agriculture-and-foodstuff"
-
-def normalize_category(value: str) -> str:
-    value = str(value or "").strip().lower()
-    return value or "agriculture-and-foodstuff"
-
-def iter_rows(csv_path: str):
-    """
-    Iterate rows as dicts. Uses pandas if available, else falls back to csv module.
-    """
-    try:
-        import pandas as pd  # type: ignore
-
-        df = pd.read_csv(csv_path)
-        for _, row in df.iterrows():
-            yield {k: row.get(k) for k in df.columns}
-        return
-    except Exception:
-        # pandas missing or failed: use csv
-        with open(csv_path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                yield row
+        return [str(img_val)] if str(img_val).startswith('http') else []
 
 def sync_to_flink():
     csv_path = 'data/crapy_results.csv'
-    
     if not os.path.exists(csv_path):
-        print(f"Error: {csv_path} not found. Run the scraper first.")
+        print(f"Error: Run the scraper first.")
         return
 
-    print("--- Flink Product Uploader ---")
-    token = input("Enter your Flink Auth Token (Bearer): ").strip()
-    
-    if not token:
-        print("Error: Auth token is required.")
-        return
+    print("--- Flink Product Uploader (with Images) ---")
+    token = input("Enter your Flink Auth Token: ").strip()
+    if not token: return
 
-    # Accept both raw JWT and already prefixed "Bearer <token>"
-    token = token.replace("Bearer ", "").strip()
-    
+    df = pd.read_csv(csv_path)
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
     }
 
     success_count = 0
-    fail_count = 0
-
-    rows = list(iter_rows(csv_path))
-    print(f"--- Uploading {len(rows)} products to Flink... ---")
-
-    for index, row in enumerate(rows):
-        row = row or {}
-        # Prepare the payload based on Flink API requirements
-        link = str(row.get("link") or "").strip()
-        scraped_desc = str(row.get("description") or "").strip()
-        seller_name = str(row.get("seller_name") or "Private Seller").strip()
-        seller_phone = str(row.get("seller_phone") or "").strip()
-        category = normalize_category(row.get("category")) if row.get("category") else normalize_category(category_from_link(link))
-
-        meta_bits = [f"Seller: {seller_name}"]
-        if seller_phone and seller_phone.lower() not in ["visit link to view", "not found in description", "nan"]:
-            meta_bits.append(f"Phone: {seller_phone}")
-        if link:
-            meta_bits.append(f"Source: {link}")
-
+    for index, row in df.iterrows():
+        # Prepare the payload
         payload = {
-            "name": str(row.get('product_name') or '').strip(),
-            "category": category,
-            "description": (scraped_desc + "\n\n" + ". ".join(meta_bits)).strip() if scraped_desc else ". ".join(meta_bits),
-            "price": clean_price(str(row.get('price') or '')),
-            "unit": "piece",
+            "name": row['product_name'],
+            "category": "Agriculture",
+            "description": f"Seller: {row['seller_name']}. Phone: {row['seller_phone']}",
+            "price": clean_price(row['price']),
+            "unit": "unit",
             "quantityAvailable": 10,
-            "location": parse_location(str(row.get('location') or '')),
-            "images": [] # Jiji images would need to be downloaded/uploaded separately
+            "location": parse_location(row['location']),
+            "images": parse_images(row.get('all_images', row.get('main_image', [])))
         }
 
         try:
-            if not payload["name"]:
-                print(f"SKIP [{index+1}]: Missing product_name")
-                continue
-            response = requests.post(SYNC_ENDPOINT, headers=headers, data=json.dumps(payload))
-            
-            if response.status_code == 201 or response.status_code == 200:
-                print(f"SUCCESS [{index+1}]: {payload['name']}")
+            response = requests.post(SYNC_ENDPOINT, headers=headers, json=payload)
+            if response.status_code in [200, 201]:
+                print(f"SUCCESS: {row['product_name']}")
                 success_count += 1
             else:
-                print(f"FAILED [{index+1}]: {payload['name']} - Status: {response.status_code}")
-                # print(response.text)
-                fail_count += 1
+                print(f"FAILED: {row['product_name']} ({response.status_code})")
         except Exception as e:
             print(f"ERROR: {e}")
-            fail_count += 1
 
-    print(f"\n--- Sync Complete ---")
-    print(f"Uploaded: {success_count}")
-    print(f"Failed: {fail_count}")
+    print(f"\n--- Sync Complete. Uploaded {success_count} products. ---")
 
 if __name__ == "__main__":
     sync_to_flink()
