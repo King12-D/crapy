@@ -2,3 +2,6 @@ autoscraper
 selenium
 webdriver-manager
 pandas
+undetected-chromedriver
+lxml
+beautifulsoup4
