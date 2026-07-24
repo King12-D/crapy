@@ -10,17 +10,14 @@ class crapy:
 
     def get_data(self, url, max_items=50):
         options = uc.ChromeOptions()
-        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1366,768")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--lang=en-US")
-        options.add_argument("--disable-web-security")
-        options.add_argument("--allow-running-insecure-content")
 
-        driver = uc.Chrome(options=options, version_main=150)
+        driver = uc.Chrome(options=options, version_main=150, headless=True)
 
         try:
             print(f"--- Navigating to: {url} ---")
