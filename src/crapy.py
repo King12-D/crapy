@@ -35,11 +35,12 @@ class crapy:
             try:
                 title_el = entry.select_one('.qa-advert-title')
                 price_el = entry.select_one('.qa-advert-price')
-                link_el = entry.find('a', href=True)
                 img_el = entry.select_one('img')
 
-                if title_el and price_el and link_el:
-                    href = link_el['href']
+                if title_el and price_el:
+                    href = entry.get('href')
+                    if not href:
+                        continue
                     link = href if href.startswith('http') else f"https://jiji.ng{href}"
                     prod = {
                         'product_name': title_el.get_text(strip=True),
