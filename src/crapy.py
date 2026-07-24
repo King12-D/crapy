@@ -1,28 +1,15 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.common.by import By
+import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
 import time
 import re
 import random
-import os
-import shutil
 
 class crapy:
     def __init__(self):
         self.phone_pattern = re.compile(r'(?:\+234|0)[789][01][\s-]?\d{3}[\s-]?\d{4,5}')
 
-    def _category_from_link(self, link: str) -> str:
-        try:
-            path = urlparse(link).path.strip("/")
-            parts = [p for p in path.split("/") if p]
-            return parts[1].strip().lower() if len(parts) >= 2 else "agriculture-and-foodstuff"
-        except:
-            return "agriculture-and-foodstuff"
-
     def get_data(self, url, max_items=50):
-        options = webdriver.ChromeOptions()
+        options = uc.ChromeOptions()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -32,16 +19,14 @@ class crapy:
         ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
         options.add_argument(f"--user-agent={ua}")
 
-        chromedriver_path = shutil.which("chromedriver") or "/usr/bin/chromedriver"
-
-        driver = webdriver.Chrome(service=ChromeService(chromedriver_path), options=options)
+        driver = uc.Chrome(options=options, version_main=126)
 
         try:
             print(f"--- Navigating to: {url} ---")
             driver.get(url)
 
-            print("--- Waiting for Cloudflare (25s)... ---")
-            time.sleep(25)
+            print("--- Waiting for page load (10s)... ---")
+            time.sleep(10)
 
             if "Just a moment" in driver.title:
                 print(f"--- Still blocked by Cloudflare. Title: {driver.title} ---")
