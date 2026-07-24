@@ -7,6 +7,7 @@ import time
 import re
 import random
 import os
+import shutil
 
 class crapy:
     def __init__(self):
@@ -25,7 +26,7 @@ class crapy:
         Simplified scraper: No scrolling to minimize bot detection triggers.
         """
         options = webdriver.FirefoxOptions()
-        # options.add_argument('--headless')
+        options.add_argument('--headless')
         
         # --- ENHANCED STEALTH FOR CLOUDFLARE ---
         ua = "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
@@ -39,10 +40,17 @@ class crapy:
         options.add_argument("--height=768")
 
         # Driver path logic
-        gecko_path = "/home/king-dav/.wdm/drivers/geckodriver/linux64/v0.36.0/geckodriver"
+        gecko_path = "/usr/local/bin/geckodriver"
         if not os.path.exists(gecko_path):
-             try: gecko_path = GeckoDriverManager().install()
-             except: raise Exception("Geckodriver not found. Rate limit active.")
+            gecko_path = "/home/king-dav/.wdm/drivers/geckodriver/linux64/v0.36.0/geckodriver"
+            if not os.path.exists(gecko_path):
+                try: gecko_path = GeckoDriverManager().install()
+                except: raise Exception("Geckodriver not found. Rate limit active.")
+
+        import shutil
+        firefox_bin = shutil.which("firefox") or shutil.which("firefox-esr") or ""
+        if firefox_bin:
+            options.binary_location = firefox_bin
 
         driver = webdriver.Firefox(service=FirefoxService(gecko_path), options=options)
 
