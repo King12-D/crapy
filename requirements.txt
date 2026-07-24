@@ -1,7 +1,6 @@
-undetected-chromedriver
+cloudscraper
 setuptools
 pandas
 pymongo
 beautifulsoup4
 lxml
-requests

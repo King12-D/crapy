@@ -1,4 +1,4 @@
-import undetected_chromedriver as uc
+import cloudscraper
 from bs4 import BeautifulSoup
 import time
 import re
@@ -6,77 +6,58 @@ import random
 
 class crapy:
     def __init__(self):
+        self.scraper = cloudscraper.create_scraper()
         self.phone_pattern = re.compile(r'(?:\+234|0)[789][01][\s-]?\d{3}[\s-]?\d{4,5}')
 
     def get_data(self, url, max_items=50):
-        options = uc.ChromeOptions()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1366,768")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--lang=en-US")
+        print(f"--- Fetching listing page: {url} ---")
+        resp = self.scraper.get(url, timeout=30)
+        if resp.status_code != 200:
+            print(f"--- HTTP {resp.status_code} ---")
+            return []
 
-        driver = uc.Chrome(options=options, version_main=150, headless=True)
+        soup = BeautifulSoup(resp.text, 'lxml')
 
-        try:
-            print(f"--- Navigating to: {url} ---")
-            driver.get(url)
+        selectors = ['.qa-advert-list-item', '.b-advert-listing-item', 'div[class*="advert-list-item"]', '.js-advert-list-item']
+        containers = []
+        for sel in selectors:
+            containers = soup.select(sel)
+            if containers:
+                print(f"--- Found {len(containers)} items ---")
+                break
 
-            print("--- Waiting for page load (10s)... ---")
-            time.sleep(10)
+        if not containers:
+            print("--- No items found ---")
+            return []
 
-            if "Just a moment" in driver.title:
-                print(f"--- Still blocked by Cloudflare. Title: {driver.title} ---")
-                driver.execute_script("window.scrollBy(0, 500);")
-                time.sleep(5)
+        results = []
+        for i, entry in enumerate(containers[:max_items]):
+            try:
+                title_el = entry.select_one('.qa-advert-title')
+                price_el = entry.select_one('.qa-advert-price')
+                link_el = entry.find('a', href=True)
+                img_el = entry.select_one('img')
 
-            for i in range(4):
-                amount = random.randint(300, 800)
-                driver.execute_script(f"window.scrollBy(0, {amount});")
-                time.sleep(random.uniform(2, 4))
+                if title_el and price_el and link_el:
+                    href = link_el['href']
+                    link = href if href.startswith('http') else f"https://jiji.ng{href}"
+                    prod = {
+                        'product_name': title_el.get_text(strip=True),
+                        'price': price_el.get_text(strip=True),
+                        'location': 'N/A',
+                        'link': link,
+                        'main_image': img_el.get('src') or img_el.get('data-src') if img_el else 'None'
+                    }
+                    results.append(prod)
+            except:
+                continue
 
-            html = driver.page_source
-            soup = BeautifulSoup(html, 'lxml')
-
-            selectors = ['.js-advert-list-item', '.b-advert-listing-item', 'div[class*="advert-list-item"]']
-            containers = []
-            for sel in selectors:
-                containers = soup.select(sel)
-                if containers:
-                    print(f"--- Success! Found {len(containers)} items ---")
-                    break
-
-            if not containers:
-                print(f"--- No items found. Is there a captcha? Title: {driver.title} ---")
-                return []
-
-            results = []
-            for i, entry in enumerate(containers[:max_items]):
-                try:
-                    title_el = entry.select_one('.qa-advert-title')
-                    price_el = entry.select_one('.qa-advert-price')
-                    link_el = entry.find('a', href=True)
-                    img_el = entry.select_one('img')
-
-                    if title_el and price_el and link_el:
-                        prod = {
-                            'product_name': title_el.get_text(strip=True),
-                            'price': price_el.get_text(strip=True),
-                            'location': 'N/A',
-                            'link': "https://jiji.ng" + link_el['href'],
-                            'main_image': img_el.get('src') or img_el.get('data-src') if img_el else 'None'
-                        }
-                        results.append(prod)
-                except: continue
-
-            final_results = []
-            for i, prod in enumerate(results):
-                print(f"--- Scraping details {i+1}/{len(results)}: {prod['product_name'][:20]} ---")
-                driver.get(prod['link'])
-                time.sleep(random.uniform(5, 8))
-
-                it_soup = BeautifulSoup(driver.page_source, 'lxml')
+        final_results = []
+        for i, prod in enumerate(results):
+            print(f"--- Scraping details {i+1}/{len(results)}: {prod['product_name'][:20]} ---")
+            try:
+                d_resp = self.scraper.get(prod['link'], timeout=30)
+                it_soup = BeautifulSoup(d_resp.text, 'lxml')
 
                 seller_el = it_soup.select_one('.b-seller-block__name')
                 prod['seller_name'] = seller_el.get_text(strip=True) if seller_el else 'Private'
@@ -91,7 +72,10 @@ class crapy:
 
                 final_results.append(prod)
                 print(f"    Done: {prod['seller_name']}")
+            except Exception as e:
+                print(f"    Failed: {e}")
+                continue
 
-            return final_results
-        finally:
-            driver.quit()
+            time.sleep(random.uniform(2, 4))
+
+        return final_results
