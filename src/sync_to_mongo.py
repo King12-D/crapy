@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pymongo import MongoClient
 
 CSV_PATH = "data/crapy_results.csv"
-MONGO_URI = os.getenv("DBURI", "mongodb+srv://kingdav:ceokingdav@server.7ec2tgd.mongodb.net/flink")
+MONGO_URI = os.getenv("DBURI")
 DB_NAME = "flink"
 COLLECTION_NAME = "_scraped_products"
 
