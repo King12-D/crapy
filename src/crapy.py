@@ -19,7 +19,7 @@ class crapy:
         ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
         options.add_argument(f"--user-agent={ua}")
 
-        driver = uc.Chrome(options=options)
+        driver = uc.Chrome(options=options, version_main=150)
 
         try:
             print(f"--- Navigating to: {url} ---")
