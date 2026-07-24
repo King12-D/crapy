@@ -2,6 +2,7 @@ autoscraper
 selenium
 webdriver-manager
 pandas
-undetected-chromedriver
-lxml
+pymongo
 beautifulsoup4
+lxml
+requests

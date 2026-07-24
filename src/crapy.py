@@ -5,12 +5,11 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 import time
 import re
-from urllib.parse import urlparse
 import random
+import os
 
 class crapy:
     def __init__(self):
-        # Precise Nigerian phone regex for scraping
         self.phone_pattern = re.compile(r'(?:\+234|0)[789][01][\s-]?\d{3}[\s-]?\d{4,5}')
 
     def _category_from_link(self, link: str) -> str:
@@ -26,78 +25,111 @@ class crapy:
         Simplified scraper: No scrolling to minimize bot detection triggers.
         """
         options = webdriver.FirefoxOptions()
-        # Ensure it's not headless so the user can potentially see/solve challenges
+        # options.add_argument('--headless')
         
-        # User-Agent spoofing
-        options.set_preference("general.useragent.override", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0")
+        # --- ENHANCED STEALTH FOR CLOUDFLARE ---
+        ua = "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+        options.set_preference("general.useragent.override", ua)
+        options.set_preference("dom.webdriver.enabled", False)
+        options.set_preference('useAutomationExtension', False)
+        options.set_preference("intl.accept_languages", "en-US, en")
         
-        driver = None
+        # Set a common window size
+        options.add_argument("--width=1366")
+        options.add_argument("--height=768")
+
+        # Driver path logic
+        gecko_path = "/home/king-dav/.wdm/drivers/geckodriver/linux64/v0.36.0/geckodriver"
+        if not os.path.exists(gecko_path):
+             try: gecko_path = GeckoDriverManager().install()
+             except: raise Exception("Geckodriver not found. Rate limit active.")
+
+        driver = webdriver.Firefox(service=FirefoxService(gecko_path), options=options)
+
         try:
             print(f"--- Navigating to: {url} ---")
-            try:
-                service = FirefoxService(GeckoDriverManager().install())
-                driver = webdriver.Firefox(service=service, options=options)
-            except:
-                driver = webdriver.Firefox(options=options)
-
             driver.get(url)
             
-            # Wait for content to potentially load
-            print(f"--- Waiting for page load... (Current Title: {driver.title}) ---")
-            time.sleep(10) 
+            # Wait for Cloudflare to do its thing (can take 10-20 seconds)
+            print("--- Waiting for Cloudflare (25s)... ---")
+            time.sleep(25)
             
-            soup = BeautifulSoup(driver.page_source, 'lxml')
+            # Check Title
+            if "Just a moment" in driver.title:
+                print(f"--- Still blocked by Cloudflare. Title: {driver.title} ---")
+                # Try a small scroll to see if it triggers resolution
+                driver.execute_script("window.scrollBy(0, 500);")
+                time.sleep(5)
             
-            # Attempt to find items with multiple selectors
-            containers = soup.select('.js-advert-list-item')
+            # Scroll multiple times like a user
+            for i in range(4):
+                amount = random.randint(300, 800)
+                driver.execute_script(f"window.scrollBy(0, {amount});")
+                time.sleep(random.uniform(2, 4))
+            
+            html = driver.page_source
+            soup = BeautifulSoup(html, 'lxml')
+            
+            # Selectors
+            selectors = ['.js-advert-list-item', '.b-advert-listing-item', 'div[class*="advert-list-item"]']
+            containers = []
+            for sel in selectors:
+                containers = soup.select(sel)
+                if containers:
+                    print(f"--- Success! Found {len(containers)} items ---")
+                    break
+            
             if not containers:
-                containers = soup.select('div[data-advert-id]')
-            if not containers:
-                containers = [a.parent for a in soup.select('a.qa-advert-list-item') if a.parent]
-
-            print(f"--- Found {len(containers)} items on the page ---")
+                print(f"--- No items found. Is there a captcha? Title: {driver.title} ---")
+                return []
             
-            initial_data = []
-            for item in containers:
+            # Processing...
+            results = []
+            for i, entry in enumerate(containers[:max_items]):
                 try:
-                    title_el = item.select_one('.qa-advert-title, .b-advert-title-inner')
-                    price_el = item.select_one('.qa-advert-price, .b-list-advert__price')
-                    link_el = item.find('a', href=True)
+                    title_el = entry.select_one('.qa-advert-title')
+                    price_el = entry.select_one('.qa-advert-price')
+                    link_el = entry.find('a', href=True)
+                    img_el = entry.select_one('img')
                     
                     if title_el and price_el and link_el:
-                        link = "https://jiji.ng" + link_el['href'] if link_el['href'].startswith('/') else link_el['href']
-                        initial_data.append({
+                        prod = {
                             'product_name': title_el.get_text(strip=True),
                             'price': price_el.get_text(strip=True),
-                            'location': 'N/A',
-                            'link': link,
-                            'category': self._category_from_link(link),
-                        })
+                            'location': 'N/A', # Simple version for listing
+                            'link': "https://jiji.ng" + link_el['href'],
+                            'main_image': img_el.get('src') or img_el.get('data-src') if img_el else 'None'
+                        }
+                        results.append(prod)
                 except: continue
             
-            results = []
-            # Only visit details if we found listing links
-            for i, entry in enumerate(initial_data[:max_items]):
-                print(f"--- Item {i+1}/{len(initial_data)}: {entry['product_name'][:30]} ---")
-                try:
-                    driver.get(entry['link'])
-                    time.sleep(random.uniform(3, 6))
-                    
-                    item_soup = BeautifulSoup(driver.page_source, 'lxml')
-                    seller_el = item_soup.select_one('.b-seller-block__name')
-                    entry['seller_name'] = seller_el.get_text(strip=True) if seller_el else 'Private Seller'
-                    
-                    desc_el = item_soup.select_one('.qa-description-text')
-                    desc_text = desc_el.get_text(strip=True) if desc_el else ''
-                    matches = self.phone_pattern.findall(desc_text)
-                    entry['seller_phone'] = matches[0] if matches else "Visit Link"
-                    entry['seller_email'] = "N/A"
-                    
-                    results.append(entry)
-                except:
-                    results.append(entry)
-            
-            return results
+            # For each result, get details (optional but requested)
+            final_results = []
+            for i, prod in enumerate(results):
+                print(f"--- Scraping details {i+1}/{len(results)}: {prod['product_name'][:20]} ---")
+                driver.get(prod['link'])
+                time.sleep(random.uniform(5, 8))
+                
+                it_soup = BeautifulSoup(driver.page_source, 'lxml')
+                
+                # Seller & Phone
+                seller_el = it_soup.select_one('.b-seller-block__name')
+                prod['seller_name'] = seller_el.get_text(strip=True) if seller_el else 'Private'
+                
+                # Phone search in text
+                desc_el = it_soup.select_one('.qa-description-text')
+                desc_text = desc_el.get_text(strip=True) if desc_el else ''
+                matches = self.phone_pattern.findall(desc_text)
+                prod['seller_phone'] = matches[0] if matches else "Contact on Jiji"
+                
+                # Images
+                g_imgs = it_soup.select('.b-advert-carousel img')
+                prod['all_images'] = list(set([img.get('src') or img.get('data-src') for img in g_imgs if img.get('src') or img.get('data-src')]))
+                
+                final_results.append(prod)
+                print(f"    Done: {prod['seller_name']}")
+                
+            return final_results
         finally:
             if driver:
                 driver.quit()
