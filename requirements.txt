@@ -1,4 +1,5 @@
 undetected-chromedriver
+setuptools
 pandas
 pymongo
 beautifulsoup4
