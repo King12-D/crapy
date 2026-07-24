@@ -12,6 +12,8 @@ rules/*.json
 output.log
 item.html
 sample.html
+debug_page.html
+debug_source.html
 
 # IDEs
 .vscode/
