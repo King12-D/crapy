@@ -15,9 +15,10 @@ class crapy:
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1366,768")
-
-        ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-        options.add_argument(f"--user-agent={ua}")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--lang=en-US")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--allow-running-insecure-content")
 
         driver = uc.Chrome(options=options, version_main=150)
 
