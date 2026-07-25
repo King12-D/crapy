@@ -1,5 +1,7 @@
 import os
 import sys
+from dotenv import load_dotenv
+load_dotenv()
 import pandas as pd
 from src.crapy import crapy
 from src.sync_to_mongo import sync
@@ -15,7 +17,7 @@ def scrape():
 
     # 3. Initialize our scraper
     scraper_tool = crapy()
-    results = scraper_tool.get_data(target_url, max_items=200)
+    results = scraper_tool.get_data(target_url, max_items=500)
 
     if results:
         # 5. Save the data to a CSV in the data/ folder
